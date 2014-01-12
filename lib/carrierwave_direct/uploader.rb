@@ -36,7 +36,7 @@ module CarrierWaveDirect
 
       conditions = [
         ["starts-with", "$utf8", ""],
-        ["starts-with", "$key", key.sub(/#{Regexp.escape(FILENAME_WILDCARD)}\z/, "")]
+        ["starts-with", "$key", upload_key.sub(/#{Regexp.escape(FILENAME_WILDCARD)}\z/, "")]
       ]
 
       conditions << ["starts-with", "$Content-Type", ""] if will_include_content_type
@@ -76,12 +76,25 @@ module CarrierWaveDirect
       false
     end
 
+    def overwritable?
+      !!@overwrite
+    end
+
+    def overwrite
+      @overwrite ||= true
+      @overwrite
+    end
+
+    def overwrite=(val)
+      @overwrite = val
+    end
+
     def key
       return @key if @key.present?
       if present?
         self.key = URI.decode(URI.parse(URI.encode(url, " []+()")).path[1 .. -1]) # explicitly set key
       else
-        @key = "#{store_dir}/#{guid}/#{FILENAME_WILDCARD}"
+        @key = new_key
       end
       @key
     end
@@ -89,6 +102,15 @@ module CarrierWaveDirect
     def key=(k)
       @key = k
       update_version_keys(:with => @key)
+    end
+
+    def new_key
+      @new_key ||= "#{store_dir}/#{guid}/#{FILENAME_WILDCARD}"
+      @new_key
+    end
+
+    def upload_key
+      overwritable? ? key : new_key
     end
 
     def guid
